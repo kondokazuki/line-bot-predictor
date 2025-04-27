@@ -1,9 +1,9 @@
 from flask import Flask, request, abort
 from linebot.v3.messaging import MessagingApi
+from linebot.v3.messaging.models import ReplyMessageRequest, TextMessage
 from linebot.v3.webhook import WebhookHandler
+from linebot.v3.webhook.models import MessageEvent
 from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging.models import TextSendMessage
-from linebot.v3.webhook.models import TextMessage, MessageEvent
 import pandas as pd
 import os
 
@@ -104,9 +104,12 @@ def handle_message(event):
     user_input = event.message.text
     result = predict_from_input(user_input)
     line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=result)
+    ReplyMessageRequest(
+        reply_token=event.reply_token,
+        messages=[TextMessage(text=result)]
     )
+)
+
 
 import os
 
