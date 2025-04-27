@@ -4,6 +4,7 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 import pandas as pd
 import os
+import re
 
 # LINEチャネル情報
 CHANNEL_ACCESS_TOKEN = '0lqYCmSUQjUGdpwk77aNZ8cEXe75Rlz509cftBA2F1EaJDSLXLLBBF9W4unatBKQJlPIDm02YOWaxpZaFU1qOolz99MTzRzrtT2p1PDEr+E/jYM5tMYpox5i/pbxTvwhcdsgDiQUq55+aJwpp0EkTwdB04t89/1O/w1cDnyilFU='
@@ -14,44 +15,92 @@ handler = WebhookHandler(CHANNEL_SECRET)
 
 app = Flask(__name__)
 
-# カードデータ読み込み
-arrays = {}
+# 配列データ保存用
+arrays_normal = {}
+arrays_m = {}
 card_info = None
 
+# データ読み込み
 def load_card_data(file_path):
-    global arrays, card_info
-    df = pd.read_excel(file_path)
+    global arrays_normal, arrays_m, card_info
+    df_normal = pd.read_excel(file_path, sheet_name=0)
+    df_m = pd.read_excel(file_path, sheet_name='Mシリ')
 
-    arrays.clear()
+    arrays_normal.clear()
+    arrays_m.clear()
     for i in range(1, 13):
-        column_data = df.iloc[:, i].dropna().tolist()
-        arrays[i-1] = column_data
+        arrays_normal[i-1] = df_normal.iloc[:, i].dropna().tolist()
+        arrays_m[i-1] = df_m.iloc[:, i].dropna().tolist()
 
-    card_info = df.iloc[:, [14, 15, 16]]
+    card_info = df_normal.iloc[:, [14, 15, 16]]  # O列, P列, Q列
 
 load_card_data('cards.xlsx')
 
-def find_current_positions(arrays, recent_cards):
+# マッチ判定（通常）
+def match_normal(target, value):
+    if isinstance(target, int):
+        return str(target) == str(value)
+    return str(target) == str(value)
+
+# マッチ判定（Mシリ：複数値対応）
+def match_m(target, value):
+    if isinstance(target, str) and '/' in target:
+        options = target.split('/')
+        return any(str(opt) == str(value) for opt in options)
+    return str(target) == str(value)
+
+# 特別入力（★やSP）判定
+def special_match(card_no, special_keyword):
+    row = card_info[card_info.iloc[:,0] == int(card_no)]
+    if row.empty:
+        return False
+    o_value = str(row.iloc[0, 0])
+    if special_keyword.endswith('*'):
+        return f"★{special_keyword[:-1]}" in o_value
+    elif special_keyword == 'SP':
+        return 'SP' in o_value
+    return False
+
+# 現在位置探索
+def find_current_positions(arrays, recent_cards, is_m=False):
     matches = []
     for array_index, card_list in arrays.items():
         for idx in range(len(card_list) - len(recent_cards) + 1):
-            if card_list[idx:idx+len(recent_cards)] == recent_cards:
+            ok = True
+            for offset, rc in enumerate(recent_cards):
+                target = card_list[idx + offset]
+                if rc.endswith('*') or rc == 'SP':
+                    if not special_match(target, rc):
+                        ok = False
+                        break
+                else:
+                    if is_m:
+                        if not match_m(target, rc):
+                            ok = False
+                            break
+                    else:
+                        if not match_normal(target, rc):
+                            ok = False
+                            break
+            if ok:
                 matches.append((array_index, idx + len(recent_cards)))
     return matches
 
+# 未来予測
 def predict_up_to_end(arrays, card_info, array_index, start_idx):
     predictions = []
     array = arrays[array_index]
     for offset, idx in enumerate(range(start_idx, len(array))):
         card_no = array[idx]
-        card_row = card_info[card_info.iloc[:,0] == card_no].iloc[0]
+        card_row = card_info[card_info.iloc[:,0] == int(card_no)].iloc[0]
         predictions.append({
-            'cards_later': offset + 1,  # 1枚後表記
+            'cards_later': offset + 1,
             'rarity': card_row.iloc[1],
             'name': card_row.iloc[2]
         })
     return predictions
 
+# 出力整形
 def format_predictions(predictions):
     highlight_rarities = ['U', 'P', 'SEC']
     result_lines = []
@@ -63,15 +112,26 @@ def format_predictions(predictions):
         result_lines.append(line)
     return "\n".join(result_lines)
 
+# 入力テキストから予測実行
 def predict_from_input(input_text):
-    try:
-        import re
-        split_text = re.split('[、,.]', input_text)
-        recent_cards = [int(x.strip()) for x in split_text if x.strip()]
-    except ValueError:
-        return "入力形式が正しくありません。例: '10、18、40' または '10.18.40' のように入力してください。"
+    if input_text.startswith('M'):
+        arrays = arrays_m
+        is_m = True
+        input_text = input_text[1:]  # 先頭Mを除去
+    elif input_text.startswith('通常'):
+        arrays = arrays_normal
+        is_m = False
+        input_text = input_text[2:]  # 先頭通常を除去
+    else:
+        return "最初に'M'または'通常'をつけてください。"
 
-    matches = find_current_positions(arrays, recent_cards)
+    try:
+        split_text = re.split('[、,.]', input_text)
+        recent_cards = [x.strip() for x in split_text if x.strip()]
+    except ValueError:
+        return "入力形式が正しくありません。例: '通常10,18,40' または 'M10,18,40' のように入力してください。"
+
+    matches = find_current_positions(arrays, recent_cards, is_m=is_m)
     if matches:
         outputs = []
         for array_index, start_idx in matches:
@@ -81,6 +141,7 @@ def predict_from_input(input_text):
     else:
         return "一致する配列が見つかりませんでした。"
 
+# Flaskのコールバック設定
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -93,6 +154,7 @@ def callback():
 
     return 'OK'
 
+# LINEメッセージ受信時の処理
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_input = event.message.text
