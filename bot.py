@@ -66,14 +66,20 @@ def format_predictions(predictions):
 
 def predict_from_input(input_text):
     try:
-        recent_cards = [int(x.strip()) for x in input_text.split('、')]
+        # 「、」「,」「.」すべて区切り対象にする
+        import re
+        split_text = re.split('[、,.]', input_text)
+        recent_cards = [int(x.strip()) for x in split_text if x.strip()]
     except ValueError:
-        return "入力形式が正しくありません。例: '10、18、40' のように入力してください。"
+        return "入力形式が正しくありません。例: '10、18、40' または '10.18.40' のように入力してください。"
 
-    array_index, start_idx = find_current_position(arrays, recent_cards)
-    if array_index is not None:
-        predictions = predict_up_to_end(arrays, card_info, array_index, start_idx)
-        return format_predictions(predictions)
+    matches = find_current_positions(arrays, recent_cards)
+    if matches:
+        outputs = []
+        for array_index, start_idx in matches:
+            predictions = predict_up_to_end(arrays, card_info, array_index, start_idx)
+            outputs.append(f\"配列{array_index + 1}番の予測:\\n\" + format_predictions(predictions))
+        return \"\\n\\n\".join(outputs)
     else:
         return "一致する配列が見つかりませんでした。"
 
