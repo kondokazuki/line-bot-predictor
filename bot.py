@@ -31,7 +31,7 @@ def load_card_data(file_path):
     # 14〜16列目（O列～Q列）をカード情報として保存
     card_info = df.iloc[:, [14, 15, 16]]
 
-load_card_data('C:\\Users\\kｰkondo1020\\Downloads\\cards.xlsx')
+load_card_data('cards.xlsx')
 
 def find_current_position(arrays, recent_cards):
     for array_index, card_list in arrays.items():
