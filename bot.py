@@ -1,5 +1,5 @@
 from flask import Flask, request, abort
-from linebot.v3.messaging import MessagingApi
+from linebot.v3.messaging import MessagingApiClient
 from linebot.v3.messaging.models import ReplyMessageRequest, TextMessage
 from linebot.v3.webhook import WebhookHandler, MessageEvent
 from linebot.v3.exceptions import InvalidSignatureError
@@ -10,7 +10,7 @@ import os
 CHANNEL_ACCESS_TOKEN = '0lqYCmSUQjUGdpwk77aNZ8cEXe75Rlz509cftBA2F1EaJDSLXLLBBF9W4unatBKQJlPIDm02YOWaxpZaFU1qOolz99MTzRzrtT2p1PDEr+E/jYM5tMYpox5i/pbxTvwhcdsgDiQUq55+aJwpp0EkTwdB04t89/1O/w1cDnyilFU='
 CHANNEL_SECRET = '13f4af9e18a2f1bf4606703527353227'
 
-line_bot_api = MessagingApi(CHANNEL_ACCESS_TOKEN)
+line_bot_api = MessagingApiClient(CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
 
 app = Flask(__name__)
