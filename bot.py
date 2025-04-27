@@ -24,7 +24,7 @@ card_info = None
 def load_card_data(file_path):
     global arrays_normal, arrays_m, card_info
     df_normal = pd.read_excel(file_path, sheet_name=0)
-    df_m = pd.read_excel(file_path, sheet_name='Mシリ')
+    df_m = pd.read_excel(file_path, sheet_name='エムシリ')
 
     arrays_normal.clear()
     arrays_m.clear()
