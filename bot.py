@@ -78,8 +78,8 @@ def predict_from_input(input_text):
         outputs = []
         for array_index, start_idx in matches:
             predictions = predict_up_to_end(arrays, card_info, array_index, start_idx)
-            outputs.append(f\"配列{array_index + 1}番の予測:\\n\" + format_predictions(predictions))
-        return \"\\n\\n\".join(outputs)
+            outputs.append(f"配列{array_index + 1}番の予測:\n" + format_predictions(predictions))
+        return "\n\n".join(outputs)
     else:
         return "一致する配列が見つかりませんでした。"
 
