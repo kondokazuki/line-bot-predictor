@@ -1,10 +1,10 @@
 from flask import Flask, request, abort
-from linebot.v3.messaging import MessagingApiClient
-from linebot.v3.messaging.models import ReplyMessageRequest, TextMessage
+from linebot.v3.messaging import MessagingApiClient, ReplyMessageRequest, TextMessage
 from linebot.v3.webhook import WebhookHandler, MessageEvent
 from linebot.v3.exceptions import InvalidSignatureError
 import pandas as pd
 import os
+
 
 # LINEチャネル情報
 CHANNEL_ACCESS_TOKEN = '0lqYCmSUQjUGdpwk77aNZ8cEXe75Rlz509cftBA2F1EaJDSLXLLBBF9W4unatBKQJlPIDm02YOWaxpZaFU1qOolz99MTzRzrtT2p1PDEr+E/jYM5tMYpox5i/pbxTvwhcdsgDiQUq55+aJwpp0EkTwdB04t89/1O/w1cDnyilFU='
