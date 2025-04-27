@@ -2,9 +2,8 @@ from flask import Flask, request, abort
 from linebot.v3.messaging import MessagingApi
 from linebot.v3.webhook import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging.models.text_send_message import TextSendMessage
-from linebot.v3.webhook.models.message_event import MessageEvent
-from linebot.v3.webhook.models.text_message import TextMessage
+from linebot.v3.messaging.models import TextSendMessage
+from linebot.v3.webhook.models import TextMessage, MessageEvent
 import pandas as pd
 import os
 
