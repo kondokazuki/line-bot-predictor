@@ -41,9 +41,8 @@ load_card_data('cards.xlsx')
 def match_normal(target, value):
     if pd.isna(target):
         return False
-    if isinstance(target, int):
-        return str(target) == str(value)
-    return str(target) == str(value)
+    return str(int(float(target))) == str(int(float(value)))
+
 
 # マッチ判定（Mシリ：複数値対応）
 def match_m(target, value):
@@ -51,8 +50,8 @@ def match_m(target, value):
         return False
     if isinstance(target, str) and '/' in target:
         options = target.split('/')
-        return any(str(opt) == str(value) for opt in options)
-    return str(target) == str(value)
+        return any(str(int(float(opt))) == str(int(float(value))) for opt in options)
+    return str(int(float(target))) == str(int(float(value)))
 
 # 特別入力（★やSP）判定
 def special_match(card_no, special_keyword):
