@@ -6,9 +6,9 @@ import pandas as pd
 import os
 import re
 
-# LINEチャネル情報
-CHANNEL_ACCESS_TOKEN = '0lqYCmSUQjUGdpwk77aNZ8cEXe75Rlz509cftBA2F1EaJDSLXLLBBF9W4unatBKQJlPIDm02YOWaxpZaFU1qOolz99MTzRzrtT2p1PDEr+E/jYM5tMYpox5i/pbxTvwhcdsgDiQUq55+aJwpp0EkTwdB04t89/1O/w1cDnyilFU='
-CHANNEL_SECRET = '13f4af9e18a2f1bf4606703527353227'
+# LINEチャネル情報（※再発行して絶対外部公開しないようにしてね！）
+CHANNEL_ACCESS_TOKEN = 'H1Wr2AGq17U9tim+U5nbcYbiP7nIgrNVPb3lnzDkEDZCaZYOwgmOGOSxptzibMurJlPIDm02YOWaxpZaFU1qOolz99MTzRzrtT2p1PDEr+FmvpFNosShR+UHc7k9+EwBXSkWjS6hMOezkkzTU9GD1gdB04t89/1O/w1cDnyilFU='
+CHANNEL_SECRET = '42f242fba8f8f1edd0863f4d131a500a'
 
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
@@ -34,16 +34,21 @@ def load_card_data(file_path):
 
     card_info = df_normal.iloc[:, [14, 15, 16]]  # O列, P列, Q列
 
+# 初回読み込み
 load_card_data('cards.xlsx')
 
 # マッチ判定（通常）
 def match_normal(target, value):
+    if pd.isna(target):
+        return False
     if isinstance(target, int):
         return str(target) == str(value)
     return str(target) == str(value)
 
 # マッチ判定（Mシリ：複数値対応）
 def match_m(target, value):
+    if pd.isna(target):
+        return False
     if isinstance(target, str) and '/' in target:
         options = target.split('/')
         return any(str(opt) == str(value) for opt in options)
@@ -51,7 +56,13 @@ def match_m(target, value):
 
 # 特別入力（★やSP）判定
 def special_match(card_no, special_keyword):
-    row = card_info[card_info.iloc[:,0] == int(card_no)]
+    if pd.isna(card_no):
+        return False
+    try:
+        card_no_int = int(card_no)
+    except (ValueError, TypeError):
+        return False
+    row = card_info[card_info.iloc[:, 0] == card_no_int]
     if row.empty:
         return False
     o_value = str(row.iloc[0, 0])
@@ -92,12 +103,17 @@ def predict_up_to_end(arrays, card_info, array_index, start_idx):
     array = arrays[array_index]
     for offset, idx in enumerate(range(start_idx, len(array))):
         card_no = array[idx]
-        card_row = card_info[card_info.iloc[:,0] == int(card_no)].iloc[0]
-        predictions.append({
-            'cards_later': offset + 1,
-            'rarity': card_row.iloc[1],
-            'name': card_row.iloc[2]
-        })
+        if pd.isna(card_no):
+            continue
+        try:
+            card_row = card_info[card_info.iloc[:, 0] == int(card_no)].iloc[0]
+            predictions.append({
+                'cards_later': offset + 1,
+                'rarity': card_row.iloc[1],
+                'name': card_row.iloc[2]
+            })
+        except (IndexError, ValueError, TypeError):
+            continue
     return predictions
 
 # 出力整形
@@ -128,7 +144,7 @@ def predict_from_input(input_text):
     try:
         split_text = re.split('[、,.]', input_text)
         recent_cards = [x.strip() for x in split_text if x.strip()]
-    except ValueError:
+    except Exception:
         return "入力形式が正しくありません。例: '通常10,18,40' または 'M10,18,40' のように入力してください。"
 
     matches = find_current_positions(arrays, recent_cards, is_m=is_m)
@@ -144,13 +160,16 @@ def predict_from_input(input_text):
 # Flaskのコールバック設定
 @app.route("/callback", methods=['POST'])
 def callback():
-    signature = request.headers['X-Line-Signature']
+    signature = request.headers.get('X-Line-Signature')
     body = request.get_data(as_text=True)
 
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
         abort(400)
+    except Exception as e:
+        print(f"エラー発生: {e}")
+        abort(500)
 
     return 'OK'
 
